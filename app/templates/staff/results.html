@@ -1,0 +1,91 @@
+{% extends 'base_staff.html' %}
+{% block title %}Inspection Audit Results{% endblock %}
+{% block page_title %}Official Field Inspection Audits{% endblock %}
+
+{% block content %}
+<!-- Notice -->
+<div class="mb-5 p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
+  <i data-lucide="award" class="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5"></i>
+  <span>
+    Comprehensive summary of completed PMU field audits. Trust scores are derived through automated multi-signal analysis of evidence integrity, GPS proximity, and resident welfare conditions.
+  </span>
+</div>
+
+{% if inspections %}
+<div class="space-y-4">
+  {% for insp in inspections %}
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+    <div class="flex items-start justify-between gap-3 mb-3">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-green-100 text-green-800">
+            Completed Audit #{{ insp.id }}
+          </span>
+          <span class="text-xs text-slate-400 font-mono">
+            {{ insp.completed_at.strftime('%d %b %Y, %H:%M') if insp.completed_at else '—' }}
+          </span>
+        </div>
+        <p class="text-xs text-slate-600 font-medium">
+          Assigned PMU Inspector: <strong>{{ insp.inspector.name }}</strong> ({{ insp.inspector.district }})
+        </p>
+        <p class="text-[10px] text-slate-400 font-mono mt-0.5">Audit Seed: {{ insp.random_seed }}</p>
+      </div>
+
+      <!-- Trust Score Circle -->
+      {% if insp.trust_score is not none %}
+      <div class="text-center flex-shrink-0">
+        <div class="w-14 h-14 rounded-2xl flex flex-col items-center justify-center border-2
+                    {% if insp.trust_score >= 80 %}border-green-400 bg-green-50 text-green-800
+                    {% elif insp.trust_score >= 50 %}border-amber-400 bg-amber-50 text-amber-800
+                    {% else %}border-red-400 bg-red-50 text-red-800{% endif %}">
+          <span class="text-lg font-black leading-none">{{ insp.trust_score|int }}</span>
+          <span class="text-[8px] uppercase font-bold text-slate-400 mt-0.5">Trust</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Evidence & Anomaly Breakdown -->
+    {% set flag_count = insp.flags.count() %}
+    {% if flag_count > 0 %}
+    <div class="p-3 bg-red-50/80 border border-red-200 rounded-xl text-xs text-red-800 mb-3 space-y-1.5">
+      <div class="flex items-center gap-1.5 font-bold">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-red-600"></i>
+        <span>{{ flag_count }} Anomaly Lead(s) Raised During This Audit:</span>
+      </div>
+      <ul class="list-disc list-inside text-[11px] text-red-700 pl-2 space-y-0.5">
+        {% for f in insp.flags %}
+        <li><strong>{{ f.flag_type_label }}:</strong> {{ f.description }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% else %}
+    <div class="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800 flex items-center gap-2 mb-3">
+      <i data-lucide="check-circle-2" class="w-4 h-4 text-green-600"></i>
+      <span class="font-semibold">Full Compliance: All cryptographic &amp; GPS checks verified.</span>
+    </div>
+    {% endif %}
+
+    <!-- Inspector Field Notes -->
+    {% if insp.notes %}
+    <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-700">
+      <p class="font-bold text-slate-800 mb-0.5">Inspector Observations:</p>
+      <p class="italic font-medium">"{{ insp.notes }}"</p>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-2xl border border-slate-200 p-8 text-center">
+  <div class="w-14 h-14 rounded-2xl bg-teal/10 flex items-center justify-center mb-3 text-teal">
+    <i data-lucide="clipboard-check" class="w-7 h-7"></i>
+  </div>
+  <p class="font-bold text-slate-700 text-sm">No Completed Audits Yet</p>
+  <p class="text-xs text-slate-400 mt-1 max-w-xs">
+    Completed inspection reports and trust ratings for your institute will be published here.
+  </p>
+</div>
+{% endif %}
+{% endblock %}

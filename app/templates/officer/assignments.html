@@ -1,0 +1,189 @@
+{% extends 'base_officer.html' %}
+{% block title %}Inspection Assignments{% endblock %}
+{% block page_title %}Inspection Assignment Engine{% endblock %}
+{% block page_i18n_key %}nav_assignments{% endblock %}
+
+{% block content %}
+<!-- Top Smart Auto-Assign Banner -->
+<div class="bg-gradient-to-r from-navy to-teal rounded-2xl p-6 mb-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-2 mb-1">
+      <span class="bg-white/20 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+        AI Risk-Weighted Engine
+      </span>
+      <span class="text-xs text-teal-light font-medium">Conflict-Resolution Protocol</span>
+    </div>
+    <h2 class="text-xl font-extrabold">Autonomous Inspection Dispatch</h2>
+    <p class="text-xs text-slate-200 mt-1 max-w-xl">
+      Calculates priority based on real-time risk scores &amp; days since last audit. Automatically enforces home-district segregation, repeat-visit bans, and inspector workload balancing with reproducible cryptographic seeds.
+    </p>
+  </div>
+
+  <form method="POST" action="{{ url_for('officer.assignments') }}" class="flex-shrink-0">
+    <input type="hidden" name="action" value="auto" />
+    <button type="submit"
+            class="bg-saffron hover:bg-yellow-500 text-slate-900 font-extrabold text-sm px-6 py-3 rounded-xl shadow-lg transition-all transform hover:scale-105 flex items-center gap-2">
+      <i data-lucide="zap" class="w-4 h-4"></i>
+      Auto-Assign Next Priority
+    </button>
+  </form>
+</div>
+
+<!-- Main Grid: Manual Assignment & Inspector Workload -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  <!-- Manual Assignment Form -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div>
+      <h3 class="font-bold text-slate-800 text-base mb-1 flex items-center gap-2">
+        <i data-lucide="user-check" class="w-4 h-4 text-teal"></i>
+        Manual Direct Assignment
+      </h3>
+      <p class="text-xs text-slate-400 mb-4">Select target institute and assign an inspector with automatic conflict detection.</p>
+
+      <form method="POST" action="{{ url_for('officer.assignments') }}" class="space-y-4">
+        <input type="hidden" name="action" value="manual" />
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Target Institute (Sorted by Risk Score ↓)</label>
+          <select name="institute_id" required
+                  class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal bg-slate-50">
+            <option value="">Select an institute...</option>
+            {% for inst in institutes %}
+            <option value="{{ inst.id }}">
+              {{ inst.name }} &mdash; {{ inst.rag_label }} (Risk Score: {{ inst.risk_score|int }}) &mdash; {{ inst.district }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Assigned PMU Inspector</label>
+          <select name="inspector_id" required
+                  class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal bg-slate-50">
+            <option value="">Select an inspector...</option>
+            {% for insp in inspectors %}
+            <option value="{{ insp.id }}">
+              {{ insp.name }} (District: {{ insp.district }}, {{ insp.state }}) &mdash; Active: {{ insp.inspections|length }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Conflict Rules Explainer -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
+          <p class="font-bold text-slate-700 flex items-center gap-1 text-xs">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-navy"></i>
+            Strict Conflict Prevention Checks:
+          </p>
+          <p>✓ <strong>Home District Ban:</strong> Inspector cannot audit institutes in their home district.</p>
+          <p>✓ <strong>Repeat Visit Ban:</strong> Cannot audit the same institute consecutively.</p>
+          <p>✓ <strong>Workload Cap:</strong> Maximum 5 active assignments per inspector.</p>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          Verify Conflicts &amp; Confirm Assignment
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Inspector Workload Capacity Grid -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+          <i data-lucide="bar-chart-2" class="w-4 h-4 text-teal"></i>
+          PMU Inspector Capacity &amp; Balance
+        </h3>
+        <span class="text-xs text-slate-400 font-mono">{{ inspectors|length }} Inspectors Active</span>
+      </div>
+
+      <div class="space-y-3">
+        {% for insp in inspectors %}
+        {% set total_insp = insp.inspections|length %}
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div class="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center font-extrabold text-xs shadow-xs">
+            {{ insp.name[0] }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-xs font-bold text-slate-800 truncate">{{ insp.name }}</p>
+            <p class="text-[11px] text-slate-500">
+              <i data-lucide="map-pin" class="w-3 h-3 inline text-slate-400"></i>
+              Home: {{ insp.district }}, {{ insp.state }}
+            </p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-extrabold text-navy">{{ total_insp }}</span>
+            <span class="text-[10px] text-slate-400 block">Total Audits</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Active & Pending Inspection Assignments Table -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-slate-800 text-base">Active &amp; In-Progress Assignments</h3>
+      <p class="text-xs text-slate-400">Live tracker of dispatched field inspections</p>
+    </div>
+    <span class="text-xs font-mono bg-teal/10 text-teal px-3 py-1 rounded-full font-bold">
+      {{ recent_assignments|length }} Dispatched
+    </span>
+  </div>
+
+  {% if recent_assignments %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs">
+      <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider">
+        <tr>
+          <th class="px-5 py-3.5">Inspection ID</th>
+          <th class="px-5 py-3.5">Target Institute</th>
+          <th class="px-5 py-3.5">Assigned Inspector</th>
+          <th class="px-5 py-3.5">Dispatched Time</th>
+          <th class="px-5 py-3.5">Random Seed</th>
+          <th class="px-5 py-3.5">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for a in recent_assignments %}
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="px-5 py-3 font-mono font-bold text-navy">#{{ a.id }}</td>
+          <td class="px-5 py-3">
+            <p class="font-bold text-slate-800">{{ a.institute.name }}</p>
+            <p class="text-[11px] text-slate-400">{{ a.institute.district }} · Risk: {{ a.institute.risk_score|int }}</p>
+          </td>
+          <td class="px-5 py-3 font-medium text-slate-700">{{ a.inspector.name }}</td>
+          <td class="px-5 py-3 text-slate-500">{{ a.assigned_at.strftime('%d %b %Y, %H:%M') }}</td>
+          <td class="px-5 py-3">
+            <span class="font-mono text-[10px] bg-slate-100 text-slate-700 px-2 py-1 rounded-md border border-slate-200">
+              {{ a.random_seed or 'MANUAL' }}
+            </span>
+          </td>
+          <td class="px-5 py-3">
+            <span class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full text-[10px]
+                         {% if a.status == 'in_progress' %}bg-blue-100 text-blue-700
+                         {% else %}bg-amber-100 text-amber-700{% endif %}">
+              <i data-lucide="{% if a.status == 'in_progress' %}loader{% else %}clock{% endif %}" class="w-3 h-3"></i>
+              {{ a.status.replace('_', ' ').title() }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+    <i data-lucide="check-circle" class="w-8 h-8 text-green-400 mb-2"></i>
+    <p class="text-xs font-semibold text-slate-600">All assigned inspections are currently up to date.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends 'base_staff.html' %}
+{% block title %}Random Video Call Check{% endblock %}
+{% block page_title %}Random Video Call Verification{% endblock %}
+
+{% block content %}
+<!-- Top Protocol Notice -->
+<div class="mb-5 p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
+  <i data-lucide="video" class="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5"></i>
+  <span>
+    Random Video Calls are unannounced verification checks initiated by Department Officers. Staff have <strong>60 seconds</strong> to accept. Unanswered calls automatically trigger a <strong>Missed VC anomaly flag</strong> and increase institute risk.
+  </span>
+</div>
+
+<!-- 1. PENDING INCOMING CALL BANNER -->
+{% if pending_vc %}
+<div id="vc-banner" class="bg-gradient-to-br from-red-500 via-red-600 to-rose-700 text-white rounded-3xl p-6 mb-6 shadow-2xl text-center border-4 border-white/20 animate-pulse">
+  <div class="w-16 h-16 rounded-full bg-white text-red-600 flex items-center justify-center mx-auto mb-3 shadow-lg">
+    <i data-lucide="phone-call" class="w-8 h-8 animate-bounce"></i>
+  </div>
+
+  <span class="bg-black/30 text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider">
+    Official Video Verification Call
+  </span>
+
+  <h2 class="text-xl font-black mt-2">Incoming Call from Ministry Officer!</h2>
+  <p class="text-xs text-red-100 mt-0.5">Officer is requesting live video inspection of residents &amp; facility</p>
+
+  <!-- 60-Second Countdown Timer -->
+  <div class="my-4 inline-flex flex-col items-center justify-center bg-black/40 backdrop-blur-md px-6 py-2.5 rounded-2xl border border-white/20">
+    <span class="text-3xl font-black font-mono tracking-tight text-saffron" id="vc-countdown">60</span>
+    <span class="text-[10px] text-slate-200 uppercase font-bold tracking-wider">seconds remaining to answer</span>
+  </div>
+
+  <!-- Accept / Join Button -->
+  <form method="POST" action="{{ url_for('staff.accept_call', vc_id=pending_vc.id) }}">
+    <button type="submit"
+            class="w-full bg-green-500 hover:bg-green-600 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2">
+      <i data-lucide="video" class="w-5 h-5"></i>
+      Accept Call &amp; Connect to Secure Room
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- 2. ACTIVE JITSI VIDEO ROOM (When Call Accepted) -->
+{% if active_vc and (not pending_vc or active_vc.id != pending_vc.id) %}
+<div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 mb-6">
+  <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+    <div>
+      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700 uppercase tracking-wider">
+        Active Video Session
+      </span>
+      <h3 class="text-sm font-bold text-slate-800 mt-1">Jitsi Meet Secure Inspection Room</h3>
+    </div>
+    <a href="https://meet.jit.si/{{ active_vc.room_name }}" target="_blank"
+       class="text-xs bg-teal hover:bg-teal-600 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-colors">
+      <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Open Fullscreen
+    </a>
+  </div>
+
+  <!-- Embedded Jitsi Iframe -->
+  <div class="w-full rounded-xl overflow-hidden aspect-[4/3] sm:aspect-[16/9] bg-slate-900 border border-slate-800">
+    <iframe src="https://meet.jit.si/{{ active_vc.room_name }}#config.prejoinPageEnabled=false&userInfo.displayName={{ current_user.name|urlencode }}"
+            allow="camera; microphone; fullscreen; display-capture; autoplay"
+            class="w-full h-full border-0"></iframe>
+  </div>
+</div>
+{% endif %}
+
+<!-- 3. IDLE LISTENER STATUS (When no call is pending) -->
+{% if not pending_vc and not active_vc %}
+<div class="flex flex-col items-center justify-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200 p-6 text-center mb-6">
+  <div class="w-14 h-14 rounded-2xl bg-teal/10 flex items-center justify-center mb-3 text-teal">
+    <i data-lucide="video" class="w-7 h-7"></i>
+  </div>
+  <p class="font-bold text-slate-800 text-sm">Standby Mode: Video Channel Online</p>
+  <p class="text-xs text-slate-400 mt-1 max-w-xs">
+    When an officer dispatches a random check, a high-priority incoming call banner will appear here immediately.
+  </p>
+  <div class="mt-4 flex items-center gap-2 text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded-full border border-green-200">
+    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+    <span class="font-medium">Real-Time Dispatch Listener Active</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- 4. PAST VC CHECKS AUDIT HISTORY -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Historical Video Checks Log</h3>
+    <span class="text-[10px] text-slate-400 font-mono">60s SLA Protocol</span>
+  </div>
+
+  <div class="divide-y divide-slate-100 text-xs">
+    {% set vc_history = current_user.vc_requests_received|sort(attribute='requested_at', reverse=True) %}
+    {% for vc in vc_history[:5] %}
+    <div class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+      <div>
+        <p class="font-bold text-slate-800">{{ vc.requested_at.strftime('%d %b %Y, %H:%M') }}</p>
+        <p class="text-[11px] text-slate-400 font-mono">Room: {{ vc.room_name }}</p>
+      </div>
+
+      <span class="font-bold text-[10px] px-2.5 py-1 rounded-full uppercase
+                   {% if vc.status == 'accepted' %}bg-green-100 text-green-700
+                   {% elif vc.status == 'missed' %}bg-red-100 text-red-700
+                   {% else %}bg-amber-100 text-amber-700{% endif %}">
+        ● {{ vc.status.title() }}
+      </span>
+    </div>
+    {% else %}
+    <div class="py-8 text-center text-slate-400 text-xs">No prior video check records found.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/vc_staff.js') }}"></script>
+{% endblock %}

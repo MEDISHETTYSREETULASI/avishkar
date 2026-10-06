@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Inspector - SIH26095{% endblock %}
+{% block content %}
+<section class="card">
+  <h1 class="card-title">Inspector home</h1>
+  <p>Signed in as <strong>{{ current_user.full_name }}</strong>.</p>
+  <p style="margin-top:8px;">Home district: <strong>{{ current_user.home_district }}</strong></p>
+  <div style="margin-top:20px;">
+    <h2 style="font-size:1rem;margin-bottom:10px;">My assigned inspections</h2>
+    {% if assigned_inspections %}
+      {% for inspection in assigned_inspections %}
+      <article style="padding:12px;background:#f8fafc;border-radius:8px;margin-bottom:8px;">
+        <strong>{{ inspection.institute.name }}</strong>
+        <p>{{ inspection.institute.type }} ? {{ inspection.institute.district }}</p>
+        <small>Assigned {{ inspection.assigned_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
+        <div style="margin-top:8px;"><a class="btn btn-primary btn-sm" href="{{ url_for('capture_page', inspection_id=inspection.id) }}">Capture evidence</a></div>
+      </article>
+      {% endfor %}
+    {% else %}
+      <p style="padding:16px;background:#f8fafc;border-radius:8px;">No assignments yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

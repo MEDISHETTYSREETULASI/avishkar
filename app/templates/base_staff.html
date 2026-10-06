@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Staff Portal{% endblock %} — SIH26095</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy:   { DEFAULT: '#1E3A5F', 50: '#EEF2F8', 700: '#183050' },
+            teal:   { DEFAULT: '#0D9488', light: '#CCFBF1' },
+            saffron:{ DEFAULT: '#F59E0B' },
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 min-h-screen flex flex-col">
+
+  <!-- Top nav -->
+  <header class="bg-navy text-white shadow-md flex-shrink-0">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 bg-teal rounded-md flex items-center justify-center">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+        </div>
+        <span class="font-semibold text-sm" data-i18n="app_name">Smart Monitor</span>
+      </div>
+      <nav class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('staff.attendance') }}" class="hover:text-teal-light transition-colors
+           {% if request.endpoint == 'staff.attendance' %}text-teal-light font-semibold{% endif %}"
+           data-i18n="nav_attendance">Attendance</a>
+        <a href="{{ url_for('staff.vc_incoming') }}" class="hover:text-teal-light transition-colors
+           {% if request.endpoint == 'staff.vc_incoming' %}text-teal-light font-semibold{% endif %}"
+           data-i18n="nav_vc">Video Call</a>
+        <a href="{{ url_for('staff.flags') }}" class="hover:text-teal-light transition-colors
+           {% if request.endpoint == 'staff.flags' %}text-teal-light font-semibold{% endif %}"
+           data-i18n="nav_flags">Flags</a>
+        <a href="{{ url_for('staff.results') }}" class="hover:text-teal-light transition-colors
+           {% if request.endpoint == 'staff.results' %}text-teal-light font-semibold{% endif %}"
+           data-i18n="nav_results">Results</a>
+        <button onclick="toggleLang()" class="text-xs text-slate-300 hover:text-white ml-2" id="lang-label">हिन्दी</button>
+        <a href="{{ url_for('auth.logout') }}" class="text-slate-400 hover:text-white ml-1" title="Logout">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </a>
+      </nav>
+    </div>
+    <!-- Page title strip -->
+    <div class="bg-navy-700 border-t border-white/10">
+      <div class="max-w-2xl mx-auto px-4 py-2">
+        <h1 class="text-sm font-semibold text-slate-200">{% block page_title %}{% endblock %}</h1>
+        {% if current_user.institute %}
+          <p class="text-xs text-slate-400">{{ current_user.institute.name }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="max-w-2xl mx-auto px-4 pt-4">
+        {% for category, message in messages %}
+          <div class="flex items-start gap-2 p-3 rounded-lg mb-2 text-sm
+                      {% if category == 'error' %}bg-red-50 text-red-800{% else %}bg-blue-50 text-blue-800{% endif %}">
+            <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="text-center text-xs text-slate-400 py-4">
+    SIH26095 — Dept. of Social Justice &amp; Empowerment, India
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/vc_staff.js') }}"></script>
+  <script>lucide.createIcons();</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

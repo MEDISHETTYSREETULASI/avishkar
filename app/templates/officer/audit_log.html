@@ -1,0 +1,117 @@
+{% extends 'base_officer.html' %}
+{% block title %}Audit Trail Log{% endblock %}
+{% block page_title %}Immutable System Audit Trail{% endblock %}
+{% block page_i18n_key %}nav_audit{% endblock %}
+
+{% block content %}
+<!-- Filter & Search Bar -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6 flex flex-col md:flex-row items-center justify-between gap-3">
+  <!-- Search -->
+  <form method="GET" action="{{ url_for('officer.audit_log') }}" class="relative w-full md:w-80">
+    <input type="hidden" name="action" value="{{ current_action }}" />
+    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+    <input type="text" name="q" value="{{ current_search }}" placeholder="Search actor, seed, institute or action..."
+           class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal bg-slate-50 focus:bg-white" />
+  </form>
+
+  <!-- Action Filter -->
+  <div class="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end text-xs">
+    <span class="text-slate-400 font-medium">Filter Action:</span>
+    <select onchange="location.href='{{ url_for('officer.audit_log') }}?q={{ current_search }}&action=' + this.value"
+            class="border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-medium focus:outline-none focus:ring-2 focus:ring-teal">
+      <option value="all" {% if current_action == 'all' %}selected{% endif %}>All System Events</option>
+      {% for act in distinct_actions %}
+      <option value="{{ act }}" {% if current_action == act %}selected{% endif %}>{{ act }}</option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+<!-- Audit Log Table -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-slate-800 text-base">Cryptographic &amp; Operational Audit Trail</h3>
+      <p class="text-xs text-slate-400">Chronological, tamper-evident log of all system decisions, assignments, logins, and reviews</p>
+    </div>
+    <span class="text-xs font-mono bg-navy/10 text-navy px-3 py-1 rounded-full font-bold">
+      {{ logs|length }} Entries Displayed
+    </span>
+  </div>
+
+  {% if logs %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs">
+      <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] tracking-wider">
+        <tr>
+          <th class="px-5 py-3.5">Log ID</th>
+          <th class="px-5 py-3.5">Timestamp</th>
+          <th class="px-5 py-3.5">Actor</th>
+          <th class="px-5 py-3.5">Action Type</th>
+          <th class="px-5 py-3.5">Target Entity</th>
+          <th class="px-5 py-3.5">Audit Payload (JSON)</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for l in logs %}
+        <tr class="hover:bg-slate-50/80 transition-colors">
+          <td class="px-5 py-3.5 font-mono text-slate-400 font-bold">#{{ l.id }}</td>
+          <td class="px-5 py-3.5 whitespace-nowrap text-slate-600 font-mono text-[11px]">
+            {{ l.timestamp.strftime('%d %b %Y, %H:%M:%S') }}
+          </td>
+          <td class="px-5 py-3.5 whitespace-nowrap">
+            {% if l.actor %}
+              <div class="flex items-center gap-1.5">
+                <span class="w-5 h-5 rounded-full bg-navy text-white text-[10px] flex items-center justify-center font-bold">
+                  {{ l.actor.name[0] }}
+                </span>
+                <div>
+                  <p class="font-bold text-slate-800 leading-tight">{{ l.actor.name }}</p>
+                  <span class="text-[10px] text-slate-400 font-medium">{{ l.actor.role.title() }}</span>
+                </div>
+              </div>
+            {% else %}
+              <span class="inline-flex items-center gap-1 text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                <i data-lucide="cpu" class="w-3 h-3 text-slate-400"></i> SYSTEM
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3.5 whitespace-nowrap">
+            <span class="font-mono text-[11px] font-bold text-navy px-2 py-0.5 rounded-md bg-navy/5 border border-navy/10">
+              {{ l.action }}
+            </span>
+          </td>
+          <td class="px-5 py-3.5 whitespace-nowrap text-slate-600">
+            {% if l.entity_type %}
+              <span class="font-medium text-slate-700">{{ l.entity_type }}</span>
+              <span class="font-mono text-[10px] text-slate-400">#{{ l.entity_id }}</span>
+            {% else %}
+              <span class="text-slate-400">—</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3.5 font-mono text-[10px] max-w-xs">
+            {% if l.detail_json %}
+            <details class="cursor-pointer">
+              <summary class="text-teal hover:underline select-none truncate">
+                {{ l.detail_json[:40] }}...
+              </summary>
+              <pre class="mt-2 p-2 bg-slate-900 text-teal-light rounded-lg overflow-x-auto text-[10px] leading-relaxed max-w-sm">{{ l.detail_json }}</pre>
+            </details>
+            {% else %}
+              <span class="text-slate-400">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-16 text-slate-400 text-center">
+    <i data-lucide="scroll-text" class="w-8 h-8 mb-2 text-slate-300"></i>
+    <p class="font-bold text-slate-600 text-sm">No Audit Logs Found</p>
+    <p class="text-xs text-slate-400 mt-0.5">Try clearing your search query or action filter.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

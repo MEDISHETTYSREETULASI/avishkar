@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Assignment audit - SIH26095{% endblock %}
+{% block content %}
+<section class="card">
+  <a class="btn btn-outline btn-sm" href="{{ url_for('officer_page') }}">Back to institutes</a>
+  <h1 class="card-title" style="margin-top:14px;">Assignment audit log</h1>
+  <p style="color:var(--text-muted);margin-bottom:14px;">Latest 20 assignment batches. Each seed records the random choices for that run.</p>
+  {% if audit_rows %}
+  <div class="table-responsive"><table>
+    <thead><tr><th>Created (UTC)</th><th>Random seed</th><th>Assigned count</th><th>Institute ? inspector</th></tr></thead>
+    <tbody>{% for row in audit_rows %}<tr>
+      <td>{{ row.batch.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td><code>{{ row.batch.seed }}</code></td><td>{{ row.batch.assigned_count }}</td>
+      <td><ul style="padding-left:18px;">{% for inspection in row.inspections %}<li>{{ inspection.institute.name }} ? {{ inspection.inspector.username }}</li>{% endfor %}</ul></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p>No assignment runs recorded yet.</p>{% endif %}
+</section>
+{% endblock %}

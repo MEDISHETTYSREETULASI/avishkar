@@ -1,0 +1,129 @@
+{% extends 'base_inspector.html' %}
+{% block title %}Field Audit Tasks{% endblock %}
+
+{% block content %}
+<div class="px-4 pt-4">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h2 class="text-lg font-extrabold text-slate-900" data-i18n="nav_tasks">My Assigned Audits</h2>
+      <p class="text-xs text-slate-500">Inspection assignments assigned to you</p>
+    </div>
+    <div class="w-8 h-8 rounded-full bg-teal/10 flex items-center justify-center text-teal font-bold text-xs">
+      {{ (assigned|length) + (in_progress|length) }}
+    </div>
+  </div>
+
+  <!-- In-Progress Inspection Banner -->
+  {% if in_progress %}
+  <div class="mb-5">
+    <p class="text-[11px] font-bold text-blue-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+      <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+      Active Audit in Progress
+    </p>
+
+    <div class="space-y-3">
+      {% for insp in in_progress %}
+      <div class="bg-gradient-to-br from-white to-blue-50/50 rounded-2xl border-2 border-blue-300 shadow-sm p-4 relative overflow-hidden">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 uppercase tracking-wider">
+              Inspection #{{ insp.id }} · In Progress
+            </span>
+            <h3 class="text-base font-bold text-slate-900 mt-1">{{ insp.institute.name }}</h3>
+            <p class="text-xs text-slate-500">
+              <i data-lucide="map-pin" class="w-3 h-3 inline text-slate-400"></i>
+              {{ insp.institute.address or (insp.institute.district + ', ' + insp.institute.state) }}
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs my-3 bg-white/80 p-2.5 rounded-xl border border-blue-100">
+          <div>
+            <span class="text-slate-400 block text-[10px]">Facility Type</span>
+            <span class="font-bold text-slate-700">{{ insp.institute.type_label }}</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px]">Evidence Captured</span>
+            <span class="font-bold text-teal">{{ insp.evidence.count() }} Photo(s)</span>
+          </div>
+        </div>
+
+        <a href="{{ url_for('inspector.capture', inspection_id=insp.id) }}"
+           class="w-full bg-teal hover:bg-teal-600 text-white font-bold text-xs py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+          Resume Evidence Capture
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Assigned Tasks -->
+  {% if assigned %}
+  <div class="mb-5">
+    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+      Pending Scheduled Inspections
+    </p>
+
+    <div class="space-y-3">
+      {% for insp in assigned %}
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              {{ insp.institute.rag_label }} (Score: {{ insp.institute.risk_score|int }})
+            </span>
+            <h3 class="text-sm font-bold text-slate-900 mt-1">{{ insp.institute.name }}</h3>
+            <p class="text-xs text-slate-500">
+              <i data-lucide="map-pin" class="w-3 h-3 inline text-slate-400"></i>
+              {{ insp.institute.district }}, {{ insp.institute.state }}
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5 text-center text-xs my-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+          <div>
+            <span class="text-[10px] text-slate-400 block">Capacity</span>
+            <span class="font-bold text-slate-700">{{ insp.institute.reported_capacity }}</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-400 block">Grant</span>
+            <span class="font-bold text-teal">₹{{ insp.institute.grant_amount_lakhs }}L</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-400 block">Dispatched</span>
+            <span class="font-medium text-slate-600">{{ insp.assigned_at.strftime('%d %b') }}</span>
+          </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('inspector.start_inspection', inspection_id=insp.id) }}">
+          <button type="submit"
+                  class="w-full bg-navy hover:bg-navy-700 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+            <i data-lucide="play" class="w-3.5 h-3.5 text-saffron"></i>
+            Start Live Inspection
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Empty State -->
+  {% if not assigned and not in_progress %}
+  <div class="flex flex-col items-center justify-center py-20 text-slate-400 text-center">
+    <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+      <i data-lucide="clipboard-check" class="w-8 h-8 text-teal"></i>
+    </div>
+    <p class="font-bold text-slate-700 text-sm">No Pending Tasks</p>
+    <p class="text-xs text-slate-400 mt-1 max-w-xs">
+      You are all caught up! New field inspections will appear here when assigned by the officer.
+    </p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

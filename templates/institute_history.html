@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}{{ institute.name }} - SIH26095{% endblock %}
+{% block content %}
+<section class="card">
+  <a class="btn btn-outline btn-sm" href="{{ url_for('officer_page') }}">Back to dashboard</a>
+  <h1 style="font-size:1.3rem;margin-top:14px;">{{ institute.name }}</h1>
+  <p>{{ institute.type }} ? {{ institute.district }} ? Risk {{ institute.risk_score }}/100</p>
+  <p style="color:var(--text-muted);">{{ '%.6f'|format(institute.latitude) }}, {{ '%.6f'|format(institute.longitude) }}</p>
+</section>
+<section class="card">
+  <h2 class="card-title">Inspection history and evidence</h2>
+  {% if inspections %}
+    {% for inspection in inspections %}
+    <article style="padding:14px 0;border-bottom:1px solid var(--border);">
+      <h3 style="font-size:1rem;">Inspection #{{ inspection.id }} ? {{ inspection.status|capitalize }}</h3>
+      <p>Inspector: {{ inspection.inspector.username }} ? Assigned {{ inspection.assigned_at.strftime('%Y-%m-%d %H:%M UTC') if inspection.assigned_at else 'Unknown' }}</p>
+      {% if inspection.completed_at %}<p>Completed {{ inspection.completed_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>{% endif %}
+      {% for evidence in inspection.evidences %}
+      <div style="margin-top:10px;padding:12px;background:#f8fafc;border-radius:8px;">
+        <p><strong>Evidence</strong> ? {{ evidence.server_timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') if evidence.server_timestamp else 'Time unavailable' }}</p>
+        <p style="overflow-wrap:anywhere;">SHA-256: {{ evidence.image_hash }}</p>
+        <p>GPS: {{ evidence.captured_latitude }}, {{ evidence.captured_longitude }} ? {{ evidence.distance_meters }} m from institute</p>
+        <p style="overflow-wrap:anywhere;">HMAC: {{ evidence.hmac_signature }}</p>
+        <img src="{{ url_for('officer_evidence_image', evidence_id=evidence.id) }}" alt="Captured inspection evidence" loading="lazy" style="display:block;max-width:100%;max-height:420px;margin-top:8px;border-radius:8px;">
+      </div>
+      {% else %}<p style="color:var(--text-muted);margin-top:8px;">No evidence was submitted for this inspection.</p>{% endfor %}
+    </article>
+    {% endfor %}
+  {% else %}<p>No inspections recorded for this institute yet.</p>{% endif %}
+</section>
+<section class="card"><h2 class="card-title">Flags for this institute</h2>
+  {% if flags %}{% for flag in flags %}<article style="padding:8px 0;border-bottom:1px solid var(--border);">
+    <strong>{{ flag.status|replace('_',' ')|capitalize }}</strong> ? {{ flag.reason }}
+    {% if flag.reviewer_comment %}<p>Officer comment: {{ flag.reviewer_comment }}</p>{% endif %}
+  </article>{% endfor %}{% else %}<p>No flags recorded.</p>{% endif %}
+</section>
+{% endblock %}

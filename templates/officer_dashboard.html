@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Officer dashboard - SIH26095{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  #institute-map { height: 380px; border-radius: 10px; z-index: 1; }
+  .map-legend { display:flex; flex-wrap:wrap; gap:14px; margin:10px 0; font-size:.85rem; }
+  .map-dot { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:5px; }
+  .flag-review { display:grid; grid-template-columns:minmax(170px,1fr) minmax(180px,2fr) auto; gap:8px; align-items:center; }
+  @media(max-width:650px) { #institute-map {height:310px;} .flag-review {grid-template-columns:1fr;} }
+</style>
+{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+  <div><h1 style="font-size:1.3rem;font-weight:700;">Officer management dashboard</h1>
+    <p style="font-size:.85rem;color:var(--text-muted);">Department of Social Justice & Empowerment ? {{ open_count }} active assignments</p></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="btn btn-outline" href="{{ url_for('assignment_audit') }}">Assignment audit log</a>
+    <form method="post" action="{{ url_for('assign_inspections') }}"><button class="btn btn-primary" type="submit">Assign inspections</button></form>
+  </div>
+</div>
+<section class="card">
+  <div class="card-title"><span>Institute risk map</span><span style="font-size:.8rem;font-weight:normal;color:var(--text-muted);">Select a marker for inspection history</span></div>
+  <div class="map-legend">
+    <span><i class="map-dot" style="background:#dc2626"></i>Red: risk 70+ or open flags</span>
+    <span><i class="map-dot" style="background:#d97706"></i>Amber: risk 40-69</span>
+    <span><i class="map-dot" style="background:#059669"></i>Green: risk under 40</span>
+  </div>
+  <div id="institute-map" aria-label="Map of institute locations and risk status"></div>
+</section>
+<section class="card" id="open-flags">
+  <div class="card-title"><span>Open flags</span><span style="font-size:.8rem;font-weight:normal;color:var(--text-muted);">Human review only</span></div>
+  {% if open_flags %}
+    {% for flag in open_flags %}
+    <article style="padding:12px 0;border-bottom:1px solid var(--border);">
+      <p><a href="{{ url_for('institute_history', institute_id=flag.institute_id) }}"><strong>{{ flag.institute.name }}</strong></a>
+        ? {{ flag.created_at.strftime('%Y-%m-%d %H:%M UTC') if flag.created_at else '' }}</p>
+      <p style="margin:5px 0 10px;">{{ flag.reason }}</p>
+      <form class="flag-review" method="post" action="{{ url_for('review_flag', flag_id=flag.id) }}">
+        <input type="text" name="comment" maxlength="2000" placeholder="Review comment (optional)" aria-label="Review comment">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" type="submit" name="decision" value="reviewed_genuine">Reviewed: genuine</button>
+          <button class="btn btn-primary btn-sm" type="submit" name="decision" value="reviewed_needs_action">Reviewed: needs action</button>
+        </div>
+      </form>
+    </article>
+    {% endfor %}
+  {% else %}<p style="color:var(--text-muted);">No open flags.</p>{% endif %}
+</section>
+<section class="card">
+  <div class="card-title"><span>Institutes under monitoring ({{ institutes|length }})</span></div>
+  <div class="table-responsive"><table><thead><tr><th>Name</th><th>Type</th><th>District</th><th>Coordinates</th><th>Risk</th><th>Last inspected</th></tr></thead><tbody>
+  {% for institute in institutes %}<tr>
+    <td><a href="{{ url_for('institute_history', institute_id=institute.id) }}"><strong>{{ institute.name }}</strong></a></td>
+    <td>{{ institute.type }}</td><td>{{ institute.district }}</td>
+    <td>{{ '%.4f'|format(institute.latitude) }}, {{ '%.4f'|format(institute.longitude) }}</td><td>{{ institute.risk_score }}/100</td>
+    <td>{{ last_inspected_by_id[institute.id] }}</td>
+  </tr>{% endfor %}
+  </tbody></table></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(() => {
+  const institutes = {{ map_institutes|tojson }};
+  const container = document.getElementById('institute-map');
+  if (!window.L) { container.textContent = 'The map library did not load. Check the internet connection.'; return; }
+  const map = L.map(container);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  const colors = {red:'#dc2626', amber:'#d97706', green:'#059669'};
+  const points = [];
+  institutes.forEach((item) => {
+    const point = [item.latitude, item.longitude];
+    points.push(point);
+    const marker = L.circleMarker(point, {
+      radius:9, color:'#fff', weight:2, fillColor:colors[item.status], fillOpacity:.95
+    }).addTo(map);
+    const popup = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = item.name;
+    const details = document.createElement('p');
+    details.textContent = `${item.type} ? ${item.district} ? Risk ${item.risk_score}/100 ? Open flags ${item.open_flags}`;
+    const link = document.createElement('a');
+    link.href = item.history_url;
+    link.textContent = 'View inspection history';
+    popup.append(title, details, link);
+    marker.bindPopup(popup);
+  });
+  if (points.length) map.fitBounds(points, {padding:[20,20], maxZoom:10});
+})();
+</script>
+{% endblock %}

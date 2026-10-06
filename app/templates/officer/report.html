@@ -1,0 +1,237 @@
+{% extends 'base_officer.html' %}
+{% block title %}Inspection Report #{{ inspection.id }} — SIH26095{% endblock %}
+{% block page_title %}Official Field Inspection Report{% endblock %}
+{% block page_i18n_key %}nav_inspections{% endblock %}
+
+{% block head %}
+<style>
+  @media print {
+    body { background: #ffffff !important; }
+    aside, header, #report-action-bar, .no-print { display: none !important; }
+    main { padding: 0 !important; margin: 0 !important; }
+    #printable-report { box-shadow: none !important; border: 1px solid #000 !important; max-width: 100% !important; padding: 20px !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Action Bar (hidden on print) -->
+<div id="report-action-bar" class="mb-6 flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+  <a href="{{ url_for('officer.inspections') }}" class="text-xs font-bold text-slate-600 hover:text-navy flex items-center gap-1.5">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+    Back to All Inspections
+  </a>
+
+  <div class="flex items-center gap-2">
+    <button onclick="window.print()"
+            class="bg-navy hover:bg-navy-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5">
+      <i data-lucide="printer" class="w-4 h-4"></i>
+      Download Official PDF / Print Report
+    </button>
+  </div>
+</div>
+
+<!-- Printable Document Canvas -->
+<div id="printable-report" class="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 sm:p-12 max-w-4xl mx-auto font-sans text-slate-900">
+
+  <!-- Government Letterhead Header -->
+  <div class="border-b-2 border-slate-900 pb-6 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+    <div class="flex items-center gap-4">
+      <div class="w-16 h-16 rounded-2xl bg-navy text-white flex items-center justify-center font-black text-2xl flex-shrink-0 shadow-md">
+        <i data-lucide="shield-check" class="w-10 h-10 text-teal-light"></i>
+      </div>
+      <div>
+        <p class="text-xs font-black uppercase tracking-widest text-teal">Government of India</p>
+        <h1 class="text-xl font-black text-slate-900">Department of Social Justice &amp; Empowerment</h1>
+        <p class="text-xs text-slate-500 mt-0.5">National Real-Time Monitoring &amp; Inspection Protocol · Problem SIH26095</p>
+      </div>
+    </div>
+
+    <!-- Official Report Stamp -->
+    <div class="border-2 border-navy rounded-2xl p-3 text-center min-w-[170px] bg-slate-50">
+      <p class="text-[10px] font-extrabold uppercase tracking-wider text-navy">Audit Certificate</p>
+      <p class="text-base font-black text-slate-900">REPORT #{{ inspection.id }}</p>
+      <p class="text-[10px] text-slate-500 font-mono">{{ inspection.completed_at.strftime('%d-%m-%Y') if inspection.completed_at else 'In Progress' }}</p>
+    </div>
+  </div>
+
+  <!-- Trust Score Summary & Metadata Banner -->
+  <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div>
+      <span class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-navy text-white tracking-wider">
+        Audit Status: {{ inspection.status.upper() }}
+      </span>
+      <h2 class="text-lg font-black text-slate-900 mt-1.5">{{ institute.name }}</h2>
+      <p class="text-xs text-slate-600">
+        <i data-lucide="map-pin" class="w-3.5 h-3.5 inline text-slate-400"></i>
+        {{ institute.address or (institute.district + ', ' + institute.state) }}
+      </p>
+      <p class="text-[11px] text-slate-500 font-mono mt-1">Random Seed: <strong>{{ inspection.random_seed or 'N/A' }}</strong></p>
+    </div>
+
+    <!-- Trust Rating Gauge -->
+    <div class="text-center bg-white p-4 rounded-xl border border-slate-200 min-w-[150px] shadow-xs">
+      <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Compliance Trust Score</p>
+      <p class="text-3xl font-black {% if inspection.trust_score and inspection.trust_score >= 80 %}text-green-600{% elif inspection.trust_score and inspection.trust_score >= 50 %}text-amber-600{% else %}text-red-600{% endif %} mt-0.5">
+        {{ inspection.trust_score|int if inspection.trust_score is not none else '—' }}<span class="text-sm text-slate-400 font-medium">/100</span>
+      </p>
+      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full
+                   {% if inspection.trust_score and inspection.trust_score >= 80 %}bg-green-100 text-green-800
+                   {% elif inspection.trust_score and inspection.trust_score >= 50 %}bg-amber-100 text-amber-800
+                   {% else %}bg-red-100 text-red-800{% endif %}">
+        {% if inspection.trust_score and inspection.trust_score >= 80 %}HIGH TRUST
+        {% elif inspection.trust_score and inspection.trust_score >= 50 %}MODERATE RISK
+        {% else %}HIGH RISK FLAGGED{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <!-- Section 1: Institute Profile & Audit Dispatch Details -->
+  <div class="mb-6">
+    <h3 class="text-xs font-black uppercase tracking-wider text-navy border-b border-slate-200 pb-1.5 mb-3 flex items-center gap-1.5">
+      <i data-lucide="building-2" class="w-4 h-4 text-teal"></i>
+      1. Facility &amp; Dispatch Specifications
+    </h3>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+        <span class="text-slate-400 block text-[10px] uppercase font-bold">Facility Type</span>
+        <span class="font-bold text-slate-800">{{ institute.type_label }}</span>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+        <span class="text-slate-400 block text-[10px] uppercase font-bold">NGO Reg. Number</span>
+        <span class="font-mono font-bold text-slate-800">{{ institute.ngo_registration_no or 'NGO-2019-7412' }}</span>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+        <span class="text-slate-400 block text-[10px] uppercase font-bold">Capacity / Grant</span>
+        <span class="font-bold text-slate-800">{{ institute.reported_capacity }} Cap · ₹{{ institute.grant_amount_lakhs }}L</span>
+      </div>
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+        <span class="text-slate-400 block text-[10px] uppercase font-bold">Lead Auditor</span>
+        <span class="font-bold text-slate-800">{{ inspection.inspector.name }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Cryptographic Evidence Trail -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 mb-3">
+      <h3 class="text-xs font-black uppercase tracking-wider text-navy flex items-center gap-1.5">
+        <i data-lucide="camera" class="w-4 h-4 text-teal"></i>
+        2. Cryptographically Signed Field Evidence ({{ total_evidence_count }} Items)
+      </h3>
+      <span class="text-[10px] font-mono text-slate-500">SHA-256 + HMAC Protocol</span>
+    </div>
+
+    {% if evidence_list %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+        <thead class="bg-slate-100 text-slate-600 uppercase font-bold text-[10px]">
+          <tr>
+            <th class="p-3">#</th>
+            <th class="p-3">Captured Time (UTC)</th>
+            <th class="p-3">GPS Distance</th>
+            <th class="p-3">SHA-256 Checksum</th>
+            <th class="p-3">HMAC-SHA256 Signature</th>
+            <th class="p-3">Integrity</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 font-mono text-[11px]">
+          {% for ev in evidence_list %}
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-bold text-slate-900">EV-{{ ev.id }}</td>
+            <td class="p-3 text-slate-600">{{ ev.captured_at.strftime('%H:%M:%S') }}</td>
+            <td class="p-3 font-sans">
+              <span class="{% if ev.gps_distance_m and ev.gps_distance_m > 200 %}text-red-600 font-bold{% else %}text-green-700 font-medium{% endif %}">
+                {{ ev.gps_distance_m|round(1) if ev.gps_distance_m else '0.0' }}m
+              </span>
+            </td>
+            <td class="p-3 text-slate-700 truncate max-w-[120px]" title="{{ ev.sha256_hash }}">{{ ev.sha256_hash[:16] }}...</td>
+            <td class="p-3 text-slate-700 truncate max-w-[120px]" title="{{ ev.hmac_signature }}">{{ ev.hmac_signature[:16] }}...</td>
+            <td class="p-3 font-sans">
+              {% if ev.is_suspicious %}
+                <span class="text-red-700 font-bold text-[10px] bg-red-50 px-2 py-0.5 rounded border border-red-200">FLAGGED</span>
+              {% else %}
+                <span class="text-green-700 font-bold text-[10px] bg-green-50 px-2 py-0.5 rounded border border-green-200">VERIFIED</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-400 p-4 bg-slate-50 rounded-xl text-center">No field evidence records uploaded.</p>
+    {% endif %}
+  </div>
+
+  <!-- Section 3: Anomaly Flags & Human Review Decisions -->
+  <div class="mb-8">
+    <h3 class="text-xs font-black uppercase tracking-wider text-navy border-b border-slate-200 pb-1.5 mb-3 flex items-center gap-1.5">
+      <i data-lucide="alert-triangle" class="w-4 h-4 text-teal"></i>
+      3. Anomaly Leads &amp; Official Adjudications
+    </h3>
+
+    {% if flags_list %}
+    <div class="space-y-2.5">
+      {% for f in flags_list %}
+      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+        <div class="flex items-center justify-between">
+          <span class="font-bold text-slate-800">{{ f.flag_type_label }}</span>
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase
+                       {% if f.status == 'genuine' %}bg-orange-100 text-orange-800
+                       {% elif f.status == 'dismissed' %}bg-green-100 text-green-800
+                       {% else %}bg-purple-100 text-purple-800{% endif %}">
+            {{ f.status.title() }}
+          </span>
+        </div>
+        <p class="text-slate-600">{{ f.description }}</p>
+        {% if f.officer_comment %}
+        <p class="text-[11px] text-navy bg-white p-2 rounded border border-slate-200 mt-1">
+          <strong>Review Determination:</strong> {{ f.officer_comment }}
+        </p>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="p-3 bg-green-50 border border-green-200 rounded-xl text-xs text-green-800 flex items-center gap-2">
+      <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+      <span>Zero anomaly flags raised. The facility conforms to all prescribed grant-in-aid operational standards.</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Inspector Observations Note -->
+  {% if inspection.notes %}
+  <div class="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+    <p class="font-bold text-slate-800 mb-1">Inspector Executive Findings &amp; Summary:</p>
+    <p class="text-slate-700 italic">"{{ inspection.notes }}"</p>
+  </div>
+  {% endif %}
+
+  <!-- Official Signature Sign-off Block -->
+  <div class="pt-8 border-t-2 border-slate-900 grid grid-cols-2 gap-8 text-center text-xs">
+    <div>
+      <div class="h-12 flex items-end justify-center">
+        <span class="font-serif italic text-base text-navy">{{ inspection.inspector.name }}</span>
+      </div>
+      <div class="border-t border-slate-400 pt-1">
+        <p class="font-bold text-slate-800">Lead PMU Field Inspector</p>
+        <p class="text-[10px] text-slate-500">ID #{{ inspection.inspector.id }} · Verified via Biometric/OTP</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="h-12 flex items-end justify-center">
+        <span class="font-serif italic text-base text-navy">Aditya Kapoor</span>
+      </div>
+      <div class="border-t border-slate-400 pt-1">
+        <p class="font-bold text-slate-800">Zonal Monitoring Officer</p>
+        <p class="text-[10px] text-slate-500">Ministry of Social Justice &amp; Empowerment</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

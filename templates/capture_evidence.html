@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% block title %}Capture evidence - SIH26095{% endblock %}
+{% block content %}
+<section class="card" style="max-width:720px;margin:0 auto;">
+  <a href="{{ url_for('inspector_page') }}" class="btn btn-outline btn-sm">Back to inspections</a>
+  <h1 style="font-size:1.3rem;margin-top:14px;">Capture inspection evidence</h1>
+  <p><strong>{{ inspection.institute.name }}</strong> - {{ inspection.institute.district }}</p>
+  <p style="color:var(--text-muted);">Capture a live image using the camera while at the institute.</p>
+  <p style="margin:12px 0;padding:12px;background:#f8fafc;border-radius:8px;">
+    Institute coordinates: {{ '%.6f'|format(inspection.institute.latitude) }}, {{ '%.6f'|format(inspection.institute.longitude) }}
+  </p>
+  <button id="prepare" type="button" class="btn btn-primary">Request capture code and open camera</button>
+  <p id="code-status" role="status" aria-live="polite" style="margin:10px 0;"></p>
+  <video id="camera" autoplay playsinline muted style="display:none;width:100%;max-height:65vh;object-fit:contain;background:#111;border-radius:10px;"></video>
+  <button id="capture" type="button" class="btn btn-primary" disabled style="display:none;margin-top:12px;">Capture live image and GPS</button>
+  <p id="capture-status" role="status" aria-live="polite" style="margin-top:12px;"></p>
+  <section id="confirmation" style="display:none;margin-top:16px;padding:14px;border-radius:10px;background:#eef8f2;">
+    <h2 style="font-size:1.1rem;">Evidence saved</h2>
+    <dl>
+      <dt>Server time</dt><dd id="confirm-time"></dd>
+      <dt>Location distance</dt><dd id="confirm-distance"></dd>
+      <dt>Image SHA-256</dt><dd id="confirm-hash" style="overflow-wrap:anywhere;"></dd>
+      <dt>Signed record HMAC</dt><dd id="confirm-signature" style="overflow-wrap:anywhere;"></dd>
+    </dl>
+    <p id="flag-warning" style="display:none;color:#8b3c00;font-weight:700;"></p>
+  </section>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const nonceUrl = {{ url_for('issue_capture_nonce', inspection_id=inspection.id)|tojson }};
+  const evidenceUrl = {{ url_for('submit_evidence', inspection_id=inspection.id)|tojson }};
+  const prepare = document.getElementById('prepare');
+  const capture = document.getElementById('capture');
+  const video = document.getElementById('camera');
+  const codeStatus = document.getElementById('code-status');
+  const captureStatus = document.getElementById('capture-status');
+  let nonce = null;
+  let cameraStream = null;
+
+  function stopCamera() {
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+    video.srcObject = null;
+  }
+
+  function readLocation() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('This browser has no location service.'));
+      navigator.geolocation.getCurrentPosition(resolve,
+        () => reject(new Error('Location permission was denied or is unavailable.')),
+        {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+    });
+  }
+
+  prepare.addEventListener('click', async () => {
+    prepare.disabled = true;
+    capture.disabled = true;
+    codeStatus.textContent = 'Requesting a one-time code from the server...';
+    try {
+      // Ask the server for the expiring code before opening the camera for capture.
+      const codeResponse = await fetch(nonceUrl, {method: 'POST', headers: {'Accept': 'application/json'}});
+      const codeData = await codeResponse.json();
+      if (!codeResponse.ok) throw new Error(codeData.error || 'Could not request a capture code.');
+      nonce = codeData.nonce;
+      codeStatus.textContent = `Code expires at ${codeData.expires_at} (server time).`;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access requires HTTPS or localhost.');
+      }
+      stopCamera();
+      cameraStream = await navigator.mediaDevices.getUserMedia({video: {facingMode: {ideal: 'environment'}}, audio: false});
+      video.srcObject = cameraStream;
+      video.style.display = 'block';
+      await video.play();
+      capture.style.display = 'inline-block';
+      capture.disabled = false;
+      prepare.textContent = 'Request a fresh code / restart camera';
+    } catch (error) {
+      codeStatus.textContent = error.message || 'Could not prepare the camera.';
+      prepare.disabled = false;
+    }
+  });
+
+  capture.addEventListener('click', async () => {
+    capture.disabled = true;
+    captureStatus.textContent = 'Reading GPS and capturing the current camera frame...';
+    try {
+      if (!nonce) throw new Error('Request a fresh one-time code before capture.');
+      const position = await readLocation();
+      if (!video.videoWidth || !video.videoHeight) throw new Error('The camera has no live frame yet.');
+      const scale = Math.min(1, 1280 / video.videoWidth, 960 / video.videoHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const response = await fetch(evidenceUrl, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({
+          nonce: nonce,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          image: canvas.toDataURL('image/jpeg', 0.85)
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'The server rejected the evidence.');
+      document.getElementById('confirm-time').textContent = result.server_timestamp;
+      document.getElementById('confirm-distance').textContent = `${result.distance_meters.toFixed(2)} m`;
+      document.getElementById('confirm-hash').textContent = result.image_sha256;
+      document.getElementById('confirm-signature').textContent = result.record_signature;
+      document.getElementById('confirmation').style.display = 'block';
+      const flagWarning = document.getElementById('flag-warning');
+      if (result.flagged) {
+        flagWarning.textContent = `Flagged for human review: ${result.flags.join('; ')}`;
+        flagWarning.style.display = 'block';
+      }
+      captureStatus.textContent = 'Evidence capture confirmed by the server.';
+      nonce = null;
+      prepare.disabled = true;
+      stopCamera();
+    } catch (error) {
+      captureStatus.textContent = error.message || 'Capture failed. Request a fresh code and try again.';
+      capture.disabled = false;
+    }
+  });
+  window.addEventListener('pagehide', stopCamera);
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,231 @@
+{% extends 'base_officer.html' %}
+{% block title %}CCTV Video Wall &amp; Headcount AI{% endblock %}
+{% block page_title %}Live CCTV Surveillance &amp; Headcount Reconciliation{% endblock %}
+{% block page_i18n_key %}nav_cctv{% endblock %}
+
+{% block head %}
+<!-- hls.js for HLS RTSP relay playback -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Transparent Architecture Notice -->
+<div class="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl text-xs text-amber-900 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+  <div class="flex items-start gap-3">
+    <div class="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 text-amber-700 mt-0.5">
+      <i data-lucide="video" class="w-4 h-4"></i>
+    </div>
+    <div>
+      <p class="font-extrabold text-sm text-amber-950 flex items-center gap-2">
+        <span>Camera Gateway Layer Active</span>
+        <span class="bg-amber-200/80 text-amber-900 text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">SIMULATED FEED MODE</span>
+      </p>
+      <p class="text-amber-800/90 mt-0.5 leading-relaxed max-w-2xl">
+        All 15 NGO facilities are connected via the Camera Gateway. Live MJPEG/HLS streams display real-time occupant bounding boxes. AI headcount reconciliation compares detected occupants with daily staff attendance logs to flag discrepancies (> 10% threshold).
+      </p>
+    </div>
+  </div>
+
+  <button id="btn-reconcile-all"
+          class="bg-navy hover:bg-navy-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 flex-shrink-0">
+    <i data-lucide="scan" class="w-3.5 h-3.5 text-teal-light"></i>
+    Run All-Institute Scan
+  </button>
+</div>
+
+<!-- CCTV Grid Filter Bar -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+  <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+    <button data-cctv-filter="all" class="px-3 py-1.5 rounded-lg bg-white shadow-xs font-bold text-navy">All 15 Feeds</button>
+    <button data-cctv-filter="mismatch" class="px-3 py-1.5 rounded-lg text-red-600 hover:bg-white font-medium flex items-center gap-1">
+      <span class="w-2 h-2 rounded-full bg-red-500"></span> Discrepancies Only
+    </button>
+    <button data-cctv-filter="high_risk" class="px-3 py-1.5 rounded-lg text-amber-600 hover:bg-white font-medium flex items-center gap-1">
+      <span class="w-2 h-2 rounded-full bg-amber-500"></span> High Risk Facilities
+    </button>
+  </div>
+
+  <div class="flex items-center gap-3 text-xs text-slate-500 font-medium">
+    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> 15 Feeds Online</span>
+    <span>·</span>
+    <span class="font-mono text-slate-700">10% Discrepancy Tolerance</span>
+  </div>
+</div>
+
+<!-- CCTV Video Tiles Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="cctv-grid">
+  {% for inst in institutes %}
+  {% set latest_att = inst.latest_attendance %}
+  {% set reported_val = latest_att.reported_count if latest_att else (inst.reported_capacity * 0.85)|int %}
+  {% set cctv_val = latest_att.cctv_count if (latest_att and latest_att.cctv_count is not none) else ((reported_val * 0.95)|int if inst.id != 1 else 29) %}
+  {% set diff_pct = (((reported_val - cctv_val)|abs) / (reported_val if reported_val > 0 else 1) * 100)|round(1) %}
+  {% set is_mismatched = diff_pct > 10.0 %}
+
+  <div class="bg-white rounded-2xl shadow-sm border {% if is_mismatched %}border-red-300 ring-2 ring-red-100{% else %}border-slate-100{% endif %} overflow-hidden flex flex-col justify-between cctv-tile"
+       data-is-mismatch="{{ 'true' if is_mismatched else 'false' }}"
+       data-is-high-risk="{{ 'true' if inst.rag_status == 'red' else 'false' }}">
+
+    <!-- Video Canvas / Live Stream Player -->
+    <div class="relative bg-slate-950 aspect-[16/9] overflow-hidden flex items-center justify-center">
+      <!-- Live MJPEG Stream -->
+      <img src="{{ url_for('api.cctv_stream', institute_id=inst.id) }}"
+           alt="CCTV Feed for {{ inst.name }}"
+           class="w-full h-full object-cover select-none pointer-events-none"
+           loading="lazy" />
+
+      <!-- Top Overlay: Status + Tag -->
+      <div class="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between pointer-events-none">
+        <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950 shadow-xs">
+          SIMULATED
+        </span>
+        <div class="flex items-center gap-1.5 bg-black/70 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+          <span>LIVE</span>
+        </div>
+      </div>
+
+      <!-- Bottom Overlay: Camera ID & Real-Time Count -->
+      <div class="absolute bottom-2 left-2 right-2 flex items-center justify-between bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-lg text-white text-[10px] font-mono pointer-events-none">
+        <span class="truncate max-w-[140px]">CAM #{{ inst.id }} · {{ inst.district }}</span>
+        <span class="text-teal-light font-bold" id="cctv-badge-{{ inst.id }}">AI: {{ cctv_val }} detected</span>
+      </div>
+    </div>
+
+    <!-- Tile Metadata & Reconciliation Panel -->
+    <div class="p-4 flex-1 flex flex-col justify-between">
+      <div>
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <h4 class="font-extrabold text-slate-900 text-sm leading-snug">{{ inst.name }}</h4>
+            <p class="text-[11px] text-slate-500">{{ inst.type_label }} · {{ inst.district }}, {{ inst.state }}</p>
+          </div>
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full
+                       {% if inst.rag_status == 'red' %}bg-red-100 text-red-700
+                       {% elif inst.rag_status == 'amber' %}bg-amber-100 text-amber-700
+                       {% else %}bg-green-100 text-green-700{% endif %}">
+            {{ inst.rag_label }}
+          </span>
+        </div>
+
+        <!-- Headcount Reconciliation Metrics Box -->
+        <div class="p-3 rounded-xl {% if is_mismatched %}bg-red-50/80 border border-red-200{% else %}bg-slate-50 border border-slate-100{% endif %} mb-3 text-xs">
+          <div class="flex items-center justify-between font-bold mb-1">
+            <span class="text-slate-600">Headcount Reconciliation:</span>
+            {% if is_mismatched %}
+              <span class="text-red-700 flex items-center gap-1 font-extrabold">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Mismatch ({{ diff_pct }}%)
+              </span>
+            {% else %}
+              <span class="text-green-700 flex items-center gap-1 font-extrabold">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Reconciled ({{ diff_pct }}%)
+              </span>
+            {% endif %}
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[11px] mt-1.5 pt-1.5 border-t {% if is_mismatched %}border-red-200/60{% else %}border-slate-200/60{% endif %}">
+            <div>
+              <span class="text-slate-400 block text-[10px]">Staff Reported</span>
+              <span class="font-extrabold text-slate-800" id="rep-val-{{ inst.id }}">{{ reported_val }} occupants</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[10px]">CCTV Detected</span>
+              <span class="font-extrabold text-teal" id="cctv-val-{{ inst.id }}">{{ cctv_val }} occupants</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <button onclick="reconcileSingle({{ inst.id }})"
+              id="btn-rec-{{ inst.id }}"
+              class="w-full bg-slate-100 hover:bg-navy hover:text-white text-slate-700 font-bold text-xs py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs">
+        <i data-lucide="scan-line" class="w-3.5 h-3.5 text-teal"></i>
+        Run Real-Time Headcount Scan
+      </button>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filter tiles by discrepancy or high risk
+document.querySelectorAll('[data-cctv-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-cctv-filter]').forEach(b => {
+      b.classList.remove('bg-white', 'shadow-xs', 'font-bold', 'text-navy');
+      b.classList.add('text-slate-600');
+    });
+    btn.classList.add('bg-white', 'shadow-xs', 'font-bold', 'text-navy');
+    btn.classList.remove('text-slate-600');
+
+    const filter = btn.getAttribute('data-cctv-filter');
+    document.querySelectorAll('.cctv-tile').forEach(tile => {
+      const isMismatch = tile.getAttribute('data-is-mismatch') === 'true';
+      const isHighRisk = tile.getAttribute('data-is-high-risk') === 'true';
+
+      if (filter === 'all') {
+        tile.classList.remove('hidden');
+      } else if (filter === 'mismatch') {
+        tile.classList.toggle('hidden', !isMismatch);
+      } else if (filter === 'high_risk') {
+        tile.classList.toggle('hidden', !isHighRisk);
+      }
+    });
+  });
+});
+
+// Single Institute Reconcile Action
+async function reconcileSingle(instId) {
+  const btn = document.getElementById(`btn-rec-${instId}`);
+  if (btn) {
+    btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Scanning Feed...`;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  try {
+    const res = await fetch(`/api/cctv/reconcile/${instId}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.status === 'success') {
+      const r = data.result;
+      document.getElementById(`cctv-val-${instId}`).textContent = `${r.cctv_count} occupants`;
+      document.getElementById(`cctv-badge-${instId}`).textContent = `AI: ${r.cctv_count} detected`;
+      
+      if (r.is_mismatch) {
+        alert(`⚠️ Headcount Mismatch Detected for ${r.institute_name}!\nReported: ${r.reported_count} vs CCTV Detected: ${r.cctv_count} (${r.diff_pct}% diff).\nHigh-severity flag raised automatically.`);
+      }
+      setTimeout(() => location.reload(), 1200);
+    }
+  } catch (err) {
+    alert('Failed to run headcount scan.');
+  } finally {
+    if (btn) {
+      btn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-teal"></i> Scan Completed`;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+// Reconcile All Institutes
+document.getElementById('btn-reconcile-all')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-reconcile-all');
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> Scanning 15 Feeds...`;
+  if (window.lucide) lucide.createIcons();
+
+  try {
+    // Scan institutes sequentially
+    for (let i = 1; i <= 15; i++) {
+      await fetch(`/api/cctv/reconcile/${i}`, { method: 'POST' });
+    }
+    alert('All-Institute CCTV headcount scan completed! Any discrepancies have been flagged.');
+    location.reload();
+  } catch (err) {
+    alert('Scan complete with partial updates.');
+    location.reload();
+  }
+});
+</script>
+{% endblock %}

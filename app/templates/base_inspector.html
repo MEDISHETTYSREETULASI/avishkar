@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Inspector{% endblock %} — SIH26095</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy:   { DEFAULT: '#1E3A5F', 50: '#EEF2F8', 700: '#183050' },
+            teal:   { DEFAULT: '#0D9488', light: '#CCFBF1' },
+            saffron:{ DEFAULT: '#F59E0B' },
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<!-- Full-height, bottom-nav layout -->
+<body class="bg-slate-50 font-sans text-slate-900 flex flex-col h-screen overflow-hidden">
+
+  <!-- Top bar (mobile) -->
+  <header class="bg-navy text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 bg-teal rounded-md flex items-center justify-center">
+        <i data-lucide="shield-check" class="w-4 h-4 text-white"></i>
+      </div>
+      <span class="font-semibold text-sm" data-i18n="app_name">Smart Monitor</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="toggleLang()" class="text-xs text-slate-300 hover:text-white" id="lang-label">हिन्दी</button>
+      <div class="w-7 h-7 rounded-full bg-teal flex items-center justify-center text-xs font-bold">
+        {{ current_user.name[0] }}
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="px-4 pt-3">
+        {% for category, message in messages %}
+          <div class="flex items-start gap-2 p-3 rounded-lg mb-2 text-sm
+                      {% if category == 'error' %}bg-red-50 text-red-800{% else %}bg-blue-50 text-blue-800{% endif %}">
+            <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Page content -->
+  <main class="flex-1 overflow-y-auto pb-20">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ═══════════════════ BOTTOM NAV BAR ════════════════════════ -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200
+              flex items-stretch z-30 safe-bottom">
+    {% set nav_items = [
+      ('inspector.tasks',   'clipboard-list', 'nav_tasks',   'Tasks'),
+      ('inspector.capture', 'camera',         'nav_capture', 'Capture'),
+      ('inspector.history', 'clock',          'nav_history', 'History'),
+      ('inspector.profile', 'user',           'nav_profile', 'Profile'),
+    ] %}
+    {% for endpoint, icon, i18n_key, label in nav_items %}
+      <a href="{{ url_for(endpoint) }}"
+         class="flex-1 flex flex-col items-center justify-center py-2 gap-1 min-h-[56px]
+                text-xs font-medium transition-colors
+                {% if request.endpoint == endpoint %}
+                  text-teal border-t-2 border-teal
+                {% else %}
+                  text-slate-500 hover:text-navy
+                {% endif %}">
+        <i data-lucide="{{ icon }}" class="w-5 h-5"></i>
+        <span data-i18n="{{ i18n_key }}">{{ label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script>lucide.createIcons();</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Sign in - SIH26095{% endblock %}
+{% block content %}
+<section class="card" style="max-width:460px;margin:30px auto;">
+  <h1 class="card-title">SIH26095 Inspection Demo</h1>
+  <p style="margin-bottom:18px;color:var(--text-muted);">Sign in as a department officer or inspector.</p>
+  <form method="post" action="{{ url_for('login') }}">
+    <div class="form-group"><label for="username">Username</label><input id="username" name="username" autocomplete="username" required></div>
+    <div class="form-group"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn-primary" type="submit">Sign in</button>
+  </form>
+  <p style="margin-top:16px;font-size:.85rem;color:var(--text-muted);">Demo accounts use password <code>password123</code>. Officer: <code>officer1</code>. Inspectors: <code>inspector1</code> through <code>inspector5</code>.</p>
+</section>
+{% endblock %}

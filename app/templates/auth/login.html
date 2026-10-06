@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Smart Real-Time Monitoring &amp; Inspection (SIH26095)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: { DEFAULT: '#1E3A5F', 700: '#183050', 800: '#132640', 900: '#0F1E35' },
+            teal: { DEFAULT: '#0D9488', 600: '#0F766E', light: '#CCFBF1' },
+            saffron: { DEFAULT: '#F59E0B' },
+          },
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-navy-900 to-navy min-h-screen flex items-center justify-center p-4 font-sans text-slate-800">
+
+  <div class="w-full max-w-lg my-8">
+
+    <!-- Top Branding -->
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl mb-3">
+        <i data-lucide="shield-check" class="w-9 h-9 text-teal-light"></i>
+      </div>
+      <p class="text-xs font-bold uppercase tracking-widest text-teal-light">Ministry of Social Justice &amp; Empowerment</p>
+      <h1 class="text-2xl font-extrabold text-white mt-1">Smart NGO Inspection Portal</h1>
+      <p class="text-xs text-slate-300 mt-0.5">Problem SIH26095 · Grant-in-Aid Institute Monitoring</p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 p-7">
+
+      <!-- 1-Click Quick Login Section -->
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-saffron"></i>
+            1-Click Instant Demo Login
+          </span>
+          <span class="text-[10px] bg-teal/10 text-teal px-2 py-0.5 rounded-full font-bold">No typing needed</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <!-- Officer Button -->
+          <a href="{{ url_for('auth.quick_login', role='officer') }}"
+             class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-navy/20 bg-navy/5 hover:bg-navy hover:text-white hover:border-navy transition-all group text-center shadow-xs">
+            <div class="w-8 h-8 rounded-full bg-navy text-white flex items-center justify-center mb-1.5 group-hover:bg-white group-hover:text-navy transition-colors">
+              <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            </div>
+            <span class="text-xs font-bold">Officer</span>
+            <span class="text-[10px] text-slate-500 group-hover:text-slate-200">Aditya K.</span>
+          </a>
+
+          <!-- Inspector Button -->
+          <a href="{{ url_for('auth.quick_login', role='inspector') }}"
+             class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-teal/20 bg-teal/5 hover:bg-teal hover:text-white hover:border-teal transition-all group text-center shadow-xs">
+            <div class="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center mb-1.5 group-hover:bg-white group-hover:text-teal transition-colors">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+            </div>
+            <span class="text-xs font-bold">Inspector</span>
+            <span class="text-[10px] text-slate-500 group-hover:text-slate-200">Rajan M.</span>
+          </a>
+
+          <!-- Staff Button -->
+          <a href="{{ url_for('auth.quick_login', role='staff') }}"
+             class="flex flex-col items-center justify-center p-3 rounded-xl border-2 border-amber-500/20 bg-amber-50/50 hover:bg-saffron hover:text-white hover:border-saffron transition-all group text-center shadow-xs">
+            <div class="w-8 h-8 rounded-full bg-saffron text-white flex items-center justify-center mb-1.5 group-hover:bg-white group-hover:text-saffron transition-colors">
+              <i data-lucide="building-2" class="w-4 h-4"></i>
+            </div>
+            <span class="text-xs font-bold">Staff</span>
+            <span class="text-[10px] text-slate-500 group-hover:text-slate-200">Kavita P.</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="relative flex py-2 items-center mb-5">
+        <div class="flex-grow border-t border-slate-200"></div>
+        <span class="flex-shrink mx-3 text-[11px] font-semibold text-slate-400 uppercase">Or sign in manually</span>
+        <div class="flex-grow border-t border-slate-200"></div>
+      </div>
+
+      <!-- Error message banner -->
+      {% if error %}
+        <div class="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl mb-5 text-xs text-red-700">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500"></i>
+          <span>{{ error }}</span>
+        </div>
+      {% endif %}
+
+      <!-- Manual Form -->
+      <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5" for="email">Official Email Address</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <i data-lucide="mail" class="w-4 h-4"></i>
+            </span>
+            <input type="email" id="email" name="email" required autocomplete="email"
+                   value="officer@demo.in"
+                   class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm font-medium
+                          focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent bg-slate-50/50"
+                   placeholder="officer@demo.in" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="block text-xs font-bold text-slate-700" for="password">Password</label>
+            <span class="text-[11px] text-slate-400 font-mono">Demo: demo123</span>
+          </div>
+          <div class="relative">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+            </span>
+            <input type="text" id="password" name="password" required autocomplete="current-password"
+                   value="demo123"
+                   class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm font-medium
+                          focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent bg-slate-50/50"
+                   placeholder="demo123" />
+          </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-navy hover:bg-navy-700 text-white font-bold py-3 rounded-xl
+                       transition-all shadow-md hover:shadow-lg text-sm flex items-center justify-center gap-2">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          Sign In to Dashboard
+        </button>
+      </form>
+
+      <!-- Account Reference Cards -->
+      <div class="mt-6 pt-4 border-t border-slate-100">
+        <p class="text-[11px] font-bold text-slate-500 mb-2">Seeded Demo Credentials (Password: <code class="bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-mono">demo123</code>):</p>
+        <div class="grid grid-cols-1 gap-1.5 text-xs">
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono text-[11px]">
+            <span class="text-navy font-bold">Officer:</span>
+            <span class="text-slate-600">officer@demo.in</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono text-[11px]">
+            <span class="text-teal font-bold">Inspector:</span>
+            <span class="text-slate-600">inspector1@demo.in</span>
+          </div>
+          <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 font-mono text-[11px]">
+            <span class="text-amber-700 font-bold">Staff:</span>
+            <span class="text-slate-600">staff01@demo.in</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="text-center text-xs text-slate-400 mt-4">
+      Smart Real-Time Monitoring Prototype · Department of Social Justice and Empowerment
+    </p>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

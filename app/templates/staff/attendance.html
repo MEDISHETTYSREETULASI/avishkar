@@ -1,0 +1,123 @@
+{% extends 'base_staff.html' %}
+{% block title %}Daily Attendance Logging{% endblock %}
+{% block page_title %}Daily Resident Attendance Log{% endblock %}
+
+{% block content %}
+{% if not institute %}
+<div class="flex flex-col items-center justify-center py-16 text-slate-400 text-center bg-white rounded-2xl border border-slate-200 p-8">
+  <i data-lucide="building-2" class="w-10 h-10 mb-3 text-slate-300"></i>
+  <p class="font-bold text-slate-700 text-sm">Account Unlinked</p>
+  <p class="text-xs text-slate-400 mt-1">Please contact the administrator to associate your account with an institute.</p>
+</div>
+{% else %}
+
+<!-- Institute Overview Strip -->
+<div class="bg-gradient-to-r from-navy to-navy-700 rounded-2xl p-4 text-white shadow-sm mb-5 flex items-center justify-between">
+  <div>
+    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal text-white uppercase tracking-wider">
+      {{ institute.type_label }}
+    </span>
+    <h3 class="text-base font-extrabold mt-1">{{ institute.name }}</h3>
+    <p class="text-xs text-slate-300">District: {{ institute.district }}, {{ institute.state }}</p>
+  </div>
+  <div class="text-right">
+    <span class="text-xl font-black text-teal-light">{{ institute.reported_capacity }}</span>
+    <span class="text-[10px] text-slate-300 block">Max Capacity</span>
+  </div>
+</div>
+
+<!-- Daily Submission Card -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5">
+  <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+    <h3 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+      <i data-lucide="users" class="w-4 h-4 text-teal"></i>
+      Submit Today's Resident Count
+    </h3>
+    <span class="text-xs font-mono text-slate-500">{{ today_record.date.strftime('%d %b %Y') if today_record else 'Today' }}</span>
+  </div>
+
+  {% if today_record %}
+  <!-- Already submitted card -->
+  <div class="p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3 mb-4">
+    <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+      <i data-lucide="check-circle" class="w-5 h-5"></i>
+    </div>
+    <div class="flex-1">
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-bold text-green-900">Attendance Submitted for Today</p>
+        <span class="text-sm font-black text-green-700">{{ today_record.reported_count }} Present</span>
+      </div>
+      <p class="text-[11px] text-green-800/80 mt-0.5">
+        Logged at {{ today_record.submitted_at.strftime('%H:%M') if today_record.submitted_at else 'Earlier today' }}.
+        {% if today_record.mismatch_flag %}
+          <span class="text-red-700 font-bold block mt-1">⚠️ Discrepancy detected against CCTV scan (CCTV: {{ today_record.cctv_count }}).</span>
+        {% else %}
+          <span class="text-green-700 font-bold block mt-1">✓ Reconciled with automated CCTV scan (CCTV: {{ today_record.cctv_count }}).</span>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Submission Form (Enables updating if needed) -->
+  <form method="POST" action="{{ url_for('staff.attendance') }}" class="space-y-4">
+    <div>
+      <label class="block text-xs font-bold text-slate-700 mb-1.5">
+        Number of Physical Residents Present (0 to {{ institute.reported_capacity }})
+      </label>
+      <div class="relative">
+        <input type="number" name="count" min="0" max="{{ institute.reported_capacity }}" required
+               value="{{ today_record.reported_count if today_record else '' }}"
+               placeholder="e.g. {{ (institute.reported_capacity * 0.88)|int }}"
+               class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm font-extrabold focus:outline-none focus:ring-2 focus:ring-teal bg-slate-50 focus:bg-white" />
+        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Residents</span>
+      </div>
+    </div>
+
+    <button type="submit"
+            class="w-full bg-navy hover:bg-navy-700 text-white font-extrabold text-xs py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+      <i data-lucide="check" class="w-4 h-4 text-teal"></i>
+      {% if today_record %}Update Today's Attendance Count{% else %}Submit &amp; Run Automated Headcount Scan{% endif %}
+    </button>
+  </form>
+</div>
+
+<!-- 10-Day Historical Attendance Table -->
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+  <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+    <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Attendance Log (Last 10 Days)</h3>
+    <span class="text-[10px] text-slate-400 font-mono">Automated CCTV Cross-Check</span>
+  </div>
+
+  {% if recent_records %}
+  <div class="divide-y divide-slate-100 text-xs">
+    {% for rec in recent_records %}
+    <div class="p-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+      <div>
+        <p class="font-bold text-slate-800">{{ rec.date.strftime('%d %b %Y') }}</p>
+        <p class="text-[11px] text-slate-500">Reported: <strong>{{ rec.reported_count }}</strong> residents</p>
+      </div>
+
+      <div class="text-right">
+        {% if rec.mismatch_flag %}
+          <span class="inline-flex items-center gap-1 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full bg-red-100 text-red-700">
+            <i data-lucide="alert-triangle" class="w-3 h-3"></i> Mismatch
+          </span>
+        {% else %}
+          <span class="inline-flex items-center gap-1 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full bg-green-100 text-green-700">
+            <i data-lucide="check" class="w-3 h-3"></i> OK
+          </span>
+        {% endif %}
+        {% if rec.cctv_count %}
+          <span class="text-[10px] text-slate-400 block font-mono mt-0.5">CCTV: {{ rec.cctv_count }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="py-8 text-center text-slate-400 text-xs">No attendance records logged yet.</div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

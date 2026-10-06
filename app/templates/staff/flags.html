@@ -1,0 +1,95 @@
+{% extends 'base_staff.html' %}
+{% block title %}Institute Anomaly Flags{% endblock %}
+{% block page_title %}Open Anomaly Flags &amp; Clarifications{% endblock %}
+
+{% block content %}
+<div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-start gap-2">
+  <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600"></i>
+  <span>
+    Flags are anomaly leads raised by automated sensors or field audits. Provide prompt explanations or documentation to assist the Department review.
+  </span>
+</div>
+
+{% if flags %}
+<div class="space-y-4">
+  {% for flag in flags %}
+  <div class="bg-white rounded-2xl border {% if flag.severity == 'high' %}border-red-200 shadow-xs{% elif flag.severity == 'medium' %}border-amber-200{% else %}border-slate-200{% endif %} p-5">
+
+    <div class="flex items-start justify-between gap-2 mb-2">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5
+                    {% if flag.severity == 'high' %}bg-red-100 text-red-600
+                    {% elif flag.severity == 'medium' %}bg-amber-100 text-amber-600
+                    {% else %}bg-green-100 text-green-600{% endif %}">
+          <i data-lucide="{% if flag.severity == 'high' %}alert-circle{% elif flag.severity == 'medium' %}alert-triangle{% else %}info{% endif %}"
+             class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h3 class="text-sm font-extrabold text-slate-900">{{ flag.flag_type_label }}</h3>
+          <p class="text-[11px] text-slate-400">Flagged on {{ flag.created_at.strftime('%d %b %Y, %H:%M') }}</p>
+        </div>
+      </div>
+
+      <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase
+                   {% if flag.status == 'open' %}bg-red-100 text-red-700 animate-pulse
+                   {% elif flag.status == 'dismissed' %}bg-green-100 text-green-700
+                   {% elif flag.status == 'needs_action' %}bg-purple-100 text-purple-700
+                   {% else %}bg-orange-100 text-orange-700{% endif %}">
+        {{ flag.status.replace('_', ' ').title() }}
+      </span>
+    </div>
+
+    <!-- Description -->
+    <p class="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 my-2 font-medium">
+      {{ flag.description }}
+    </p>
+
+    <!-- Officer Comment if any -->
+    {% if flag.officer_comment %}
+    <div class="bg-navy/5 border border-navy/15 rounded-xl p-3 text-xs mb-2">
+      <p class="font-bold text-navy mb-0.5">Ministry Officer Assessment:</p>
+      <p class="text-slate-700">{{ flag.officer_comment }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Current Staff Response -->
+    {% if flag.staff_response %}
+    <div class="bg-teal-50 border border-teal-200 rounded-xl p-3 text-xs mb-2">
+      <p class="font-bold text-teal-900 mb-0.5">Your Submitted Explanation:</p>
+      <p class="text-teal-950 italic">"{{ flag.staff_response }}"</p>
+    </div>
+    {% endif %}
+
+    <!-- Active Response Form for Open Flags -->
+    {% if flag.status == 'open' %}
+    <form method="POST" action="{{ url_for('staff.respond_flag') }}" class="mt-3 pt-3 border-t border-slate-100 space-y-2">
+      <input type="hidden" name="flag_id" value="{{ flag.id }}" />
+      <label class="block text-[11px] font-bold text-slate-700">
+        {% if flag.staff_response %}Update Explanation / Provide Additional Details{% else %}Submit Official Institute Explanation{% endif %}
+      </label>
+      <textarea name="response" rows="2" required placeholder="Explain circumstances (e.g., medical leave, power outage, field activity)..."
+                class="w-full border border-slate-300 rounded-xl p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal bg-white">{{ flag.staff_response or '' }}</textarea>
+
+      <button type="submit"
+              class="w-full bg-teal hover:bg-teal-600 text-white font-bold text-xs py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5">
+        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+        Submit Official Explanation to Department
+      </button>
+    </form>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="flex flex-col items-center justify-center py-20 text-slate-400 bg-white rounded-2xl border border-slate-200 p-8 text-center">
+  <div class="w-14 h-14 rounded-2xl bg-green-50 flex items-center justify-center mb-3 text-green-500">
+    <i data-lucide="check-circle" class="w-7 h-7"></i>
+  </div>
+  <p class="font-bold text-slate-700 text-sm">No Active Flags</p>
+  <p class="text-xs text-slate-400 mt-1 max-w-xs">
+    Your institute currently has zero pending flags or compliance queries.
+  </p>
+</div>
+{% endif %}
+{% endblock %}
